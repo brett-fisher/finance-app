@@ -7,6 +7,8 @@ import FinancialSummaryCard from '@/components/FinancialSummaryCard';
 import DataTable from '@/components/DataTable';
 import IncomeForm from '@/components/IncomeForm';
 import BillForm from '@/components/BillForm';
+import TransactionForm from '@/components/TransactionForm';
+import WelcomeMessage from '@/components/WelcomeMessage';
 import { 
   getCurrentMonth, 
   getMonthlyData, 
@@ -15,9 +17,12 @@ import {
   deleteIncome,
   addBill,
   updateBill,
-  deleteBill
+  deleteBill,
+  addTransaction,
+  updateTransaction,
+  deleteTransaction
 } from '@/lib/storage';
-import { MonthlyData, IncomeEntry, CreateIncomeData, BillEntry, CreateBillData } from '@/types';
+import { MonthlyData, IncomeEntry, CreateIncomeData, BillEntry, CreateBillData, TransactionEntry, CreateTransactionData } from '@/types';
 
 export default function Home() {
   const [currentMonth, setCurrentMonth] = useState<string>(getCurrentMonth());
@@ -29,6 +34,8 @@ export default function Home() {
   const [editingIncome, setEditingIncome] = useState<IncomeEntry | null>(null);
   const [showBillForm, setShowBillForm] = useState(false);
   const [editingBill, setEditingBill] = useState<BillEntry | null>(null);
+  const [showTransactionForm, setShowTransactionForm] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState<TransactionEntry | null>(null);
 
   useEffect(() => {
     const data = getMonthlyData(currentMonth);
@@ -104,14 +111,44 @@ export default function Home() {
     refreshData();
   };
 
+  // Transaction handlers
+  const handleAddTransaction = () => {
+    setEditingTransaction(null);
+    setShowTransactionForm(true);
+  };
+
+  const handleEditTransaction = (id: string) => {
+    const transaction = monthlyData?.transactions.find(item => item.id === id);
+    if (transaction) {
+      setEditingTransaction(transaction);
+      setShowTransactionForm(true);
+    }
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this transaction?')) {
+      deleteTransaction(currentMonth, id);
+      refreshData();
+    }
+  };
+
+  const handleTransactionSubmit = (data: CreateTransactionData) => {
+    if (editingTransaction) {
+      updateTransaction(currentMonth, editingTransaction.id, data);
+    } else {
+      addTransaction(currentMonth, data);
+    }
+    refreshData();
+  };
+
   // Generic handlers for other types
   const handleEditEntry = (id: string) => {
     if (activeTab === 'income') {
       handleEditIncome(id);
     } else if (activeTab === 'bills') {
       handleEditBill(id);
-    } else {
-      console.log('Edit entry:', id, 'type:', activeTab);
+    } else if (activeTab === 'transactions') {
+      handleEditTransaction(id);
     }
   };
 
@@ -120,8 +157,8 @@ export default function Home() {
       handleDeleteIncome(id);
     } else if (activeTab === 'bills') {
       handleDeleteBill(id);
-    } else {
-      console.log('Delete entry:', id, 'type:', activeTab);
+    } else if (activeTab === 'transactions') {
+      handleDeleteTransaction(id);
     }
   };
 
@@ -147,6 +184,14 @@ export default function Home() {
         {/* Month Navigation */}
         <MonthNavigation currentMonth={currentMonth} onMonthChange={handleMonthChange} />
         
+        {/* Welcome Message for New Users */}
+        <WelcomeMessage 
+          monthlyData={monthlyData}
+          onAddIncome={handleAddIncome}
+          onAddBill={handleAddBill}
+          onAddTransaction={handleAddTransaction}
+        />
+        
         {/* Financial Summary */}
         <FinancialSummaryCard monthlyData={monthlyData} />
 
@@ -168,7 +213,10 @@ export default function Home() {
               <span className="mr-2">📄</span>
               Add Bill
             </button>
-            <button className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors">
+            <button 
+              onClick={handleAddTransaction}
+              className="flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors"
+            >
               <span className="mr-2">💳</span>
               Add Transaction
             </button>
@@ -250,6 +298,18 @@ export default function Home() {
           }}
           onSubmit={handleBillSubmit}
           editingEntry={editingBill}
+          currentMonth={currentMonth}
+        />
+
+        {/* Transaction Form Modal */}
+        <TransactionForm
+          isOpen={showTransactionForm}
+          onClose={() => {
+            setShowTransactionForm(false);
+            setEditingTransaction(null);
+          }}
+          onSubmit={handleTransactionSubmit}
+          editingEntry={editingTransaction}
           currentMonth={currentMonth}
         />
       </div>
